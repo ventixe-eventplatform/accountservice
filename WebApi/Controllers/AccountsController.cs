@@ -30,6 +30,13 @@ public class AccountsController(IAccountService accountService) : ControllerBase
         return result.Success ? Ok(result) : StatusCode(500, result?.Error);
     }
 
+    [HttpPost("signout")]
+    public async Task<IActionResult> SignOutAsync()
+    {
+        await _accountService.SignOutAsync();
+        return Ok(new { messsage = "Signed out successfully." });
+    }
+
     [HttpPost("exists")]
     public async Task<IActionResult> UserExistsAsync([FromBody] EmailRequest request)
     {

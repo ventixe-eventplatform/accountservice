@@ -55,6 +55,11 @@ public class AccountService(UserManager<IdentityUser> userManager, SignInManager
         return new AccountServiceResult { Success = true, UserId = user.Id.ToString() };
     }
 
+    public async Task SignOutAsync()
+    {
+        await _signInManager.SignOutAsync();
+    }
+
     public async Task<AccountServiceResult> UserExistsAsync(EmailRequest request)
     {
         var exists = await _userManager.Users.AnyAsync(x => x.Email == request.Email);
