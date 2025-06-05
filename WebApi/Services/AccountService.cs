@@ -1,17 +1,23 @@
 ﻿using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
 using WebApi.Factories;
 using WebApi.Models;
 
 namespace WebApi.Services;
 
-public class AccountService(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager) : IAccountService
+public class AccountService(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager, ITokenService tokenService) : IAccountService
 {
     private readonly UserManager<IdentityUser> _userManager = userManager;
     private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+    private readonly ITokenService _tokenService = tokenService;
 
-    public async Task<AccountServiceResult> RegisterAsync(RegisterUserModel model)
+    public async Task<AccountServiceResult<SignInResponseModel>> RegisterAsync(RegisterUserModel model)
     {
         try
         {
@@ -21,38 +27,56 @@ public class AccountService(UserManager<IdentityUser> userManager, SignInManager
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                return new AccountServiceResult { Success = false, Error = errors };
+                return new AccountServiceResult<SignInResponseModel> { Success = false, Error = errors };
             }
 
             await _signInManager.SignInAsync(entity, isPersistent: false);
 
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
-                return new AccountServiceResult { Success = false, Error = "User not found after sign in." };
+                return new AccountServiceResult<SignInResponseModel> { Success = false, Error = "User not found after sign in." };
 
-            return new AccountServiceResult { Success = true, Message = "Registration succeeded.", UserId = user.Id.ToString() };
+            var signInResponse = await SignInAsync(new SignInRequestModel
+            {
+                Email = model.Email,
+                Password = model.Password,
+            });
+            return signInResponse;
 
         } catch (Exception ex)
         {
             Debug.WriteLine($"Error during registration: {ex.Message}");
-            return new AccountServiceResult { Success = false, Error = "Unexpected error during registration." };
+            return new AccountServiceResult<SignInResponseModel> { Success = false, Error = "Unexpected error during registration." };
         }
     }
 
-    public async Task<AccountServiceResult> SignInAsync(SignInModel model)
+    public async Task<AccountServiceResult<SignInResponseModel>> SignInAsync(SignInRequestModel model)
     {
         if (model == null || string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
-            return new AccountServiceResult { Success = false, Error = "Email and password are required." };
+            return new AccountServiceResult<SignInResponseModel>
+            { Success = false, Error = "Email and password are required." };
 
         var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, isPersistent: false, lockoutOnFailure: false);
         if (!result.Succeeded)
-            return new AccountServiceResult { Success = false, Message = "Failed to sign in." };
+            return new AccountServiceResult<SignInResponseModel>
+            { Success = false, Error = "Failed to sign in." };
 
         var user = await _userManager.FindByEmailAsync(model.Email);
         if (user == null)
-            return new AccountServiceResult { Success = false, Error = "User not found after sign in." };
+            return new AccountServiceResult<SignInResponseModel>
+            { Success = false, Error = "User not found after sign in." };
 
-        return new AccountServiceResult { Success = true, UserId = user.Id.ToString() };
+        var tokenResult = _tokenService.GenerateToken(user);
+
+        return new AccountServiceResult<SignInResponseModel>
+        { Success = true, Data = new SignInResponseModel
+            {
+                Token = tokenResult.Token,
+                Email = model.Email,
+                ExpiresAt = tokenResult.ExpiresAt,
+                UserId = user.Id
+            }
+        };
     }
 
     public async Task SignOutAsync()
@@ -60,12 +84,12 @@ public class AccountService(UserManager<IdentityUser> userManager, SignInManager
         await _signInManager.SignOutAsync();
     }
 
-    public async Task<AccountServiceResult> UserExistsAsync(EmailRequest request)
+    public async Task<AccountServiceResult<bool>> UserExistsAsync(EmailRequest request)
     {
         var exists = await _userManager.Users.AnyAsync(x => x.Email == request.Email);
         
         return exists 
-            ? new AccountServiceResult{ Success = true, Error = "User already exists.", Data = exists } 
-            : new AccountServiceResult { Success = true, Data = exists };
+            ? new AccountServiceResult<bool>{ Success = true, Error = "User already exists.", Data = exists } 
+            : new AccountServiceResult<bool> { Success = true, Data = exists };
     }
 }

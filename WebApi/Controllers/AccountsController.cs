@@ -17,17 +17,25 @@ public class AccountsController(IAccountService accountService) : ControllerBase
             return BadRequest(new { Error = "Email or password not valid." });
 
         var result = await _accountService.RegisterAsync(model);
-        return result.Success ? Ok(result) : StatusCode(500, result.Error);
+
+        if (!result.Success)
+            return Unauthorized(new { Error = result.Error! });
+
+        return Ok(result.Data);
     }
 
     [HttpPost("signin")]
-    public async Task<IActionResult> SignInAsync([FromBody] SignInModel model)
+    public async Task<IActionResult> SignInAsync([FromBody] SignInRequestModel model)
     {
         if (!ModelState.IsValid)
             return BadRequest(new { Error = "Email and password do not match." });
 
         var result = await _accountService.SignInAsync(model);
-        return result.Success ? Ok(result) : StatusCode(500, result?.Error);
+
+        if (!result.Success)
+            return Unauthorized(new { Error = result.Error! });
+
+        return Ok(result.Data);
     }
 
     [HttpPost("signout")]

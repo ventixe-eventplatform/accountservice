@@ -2,7 +2,7 @@
 
 namespace WebApi.Models;
 
-public class SignInModel
+public class SignInRequestModel
 {
     [Required]
     public string Email { get; set; } = null!;
