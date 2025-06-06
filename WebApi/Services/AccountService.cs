@@ -81,7 +81,7 @@ public class AccountService(UserManager<IdentityUser> userManager, SignInManager
 
     public async Task SignOutAsync()
     {
-        await Task.CompletedTask();
+        await _signInManager.SignOutAsync();
     }
 
     public async Task<AccountServiceResult> UserExistsAsync(EmailRequest request)
