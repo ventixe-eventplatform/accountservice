@@ -4,8 +4,8 @@ namespace WebApi.Services;
 
 public interface IAccountService
 {
-    Task<AccountServiceResult<SignInResponseModel>> RegisterAsync(RegisterUserModel model);
-    Task<AccountServiceResult<SignInResponseModel>> SignInAsync(SignInRequestModel model);
+    Task<AccountServiceResultT<SignInResponseModel>> RegisterAsync(RegisterUserModel model);
+    Task<AccountServiceResultT<SignInResponseModel>> SignInAsync(SignInRequestModel model);
     Task SignOutAsync();
-    Task<AccountServiceResult<bool>> UserExistsAsync(EmailRequest request);
+    Task<AccountServiceResult> UserExistsAsync(EmailRequest request);
 }

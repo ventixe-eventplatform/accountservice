@@ -17,7 +17,7 @@ public class AccountService(UserManager<IdentityUser> userManager, SignInManager
     private readonly SignInManager<IdentityUser> _signInManager = signInManager;
     private readonly ITokenService _tokenService = tokenService;
 
-    public async Task<AccountServiceResult<SignInResponseModel>> RegisterAsync(RegisterUserModel model)
+    public async Task<AccountServiceResultT<SignInResponseModel>> RegisterAsync(RegisterUserModel model)
     {
         try
         {
@@ -27,14 +27,14 @@ public class AccountService(UserManager<IdentityUser> userManager, SignInManager
             if (!result.Succeeded)
             {
                 var errors = string.Join(", ", result.Errors.Select(e => e.Description));
-                return new AccountServiceResult<SignInResponseModel> { Success = false, Error = errors };
+                return new AccountServiceResultT<SignInResponseModel> { Success = false, Error = errors };
             }
 
             await _signInManager.SignInAsync(entity, isPersistent: false);
 
             var user = await _userManager.FindByEmailAsync(model.Email);
             if (user == null)
-                return new AccountServiceResult<SignInResponseModel> { Success = false, Error = "User not found after sign in." };
+                return new AccountServiceResultT<SignInResponseModel> { Success = false, Error = "User not found after sign in." };
 
             var signInResponse = await SignInAsync(new SignInRequestModel
             {
@@ -46,29 +46,29 @@ public class AccountService(UserManager<IdentityUser> userManager, SignInManager
         } catch (Exception ex)
         {
             Debug.WriteLine($"Error during registration: {ex.Message}");
-            return new AccountServiceResult<SignInResponseModel> { Success = false, Error = "Unexpected error during registration." };
+            return new AccountServiceResultT<SignInResponseModel> { Success = false, Error = "Unexpected error during registration." };
         }
     }
 
-    public async Task<AccountServiceResult<SignInResponseModel>> SignInAsync(SignInRequestModel model)
+    public async Task<AccountServiceResultT<SignInResponseModel>> SignInAsync(SignInRequestModel model)
     {
         if (model == null || string.IsNullOrWhiteSpace(model.Email) || string.IsNullOrWhiteSpace(model.Password))
-            return new AccountServiceResult<SignInResponseModel>
+            return new AccountServiceResultT<SignInResponseModel>
             { Success = false, Error = "Email and password are required." };
 
         var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, isPersistent: false, lockoutOnFailure: false);
         if (!result.Succeeded)
-            return new AccountServiceResult<SignInResponseModel>
+            return new AccountServiceResultT<SignInResponseModel>
             { Success = false, Error = "Failed to sign in." };
 
         var user = await _userManager.FindByEmailAsync(model.Email);
         if (user == null)
-            return new AccountServiceResult<SignInResponseModel>
+            return new AccountServiceResultT<SignInResponseModel>
             { Success = false, Error = "User not found after sign in." };
 
         var tokenResult = _tokenService.GenerateToken(user);
 
-        return new AccountServiceResult<SignInResponseModel>
+        return new AccountServiceResultT<SignInResponseModel>
         { Success = true, Data = new SignInResponseModel
             {
                 Token = tokenResult.Token,
@@ -84,12 +84,12 @@ public class AccountService(UserManager<IdentityUser> userManager, SignInManager
         await _signInManager.SignOutAsync();
     }
 
-    public async Task<AccountServiceResult<bool>> UserExistsAsync(EmailRequest request)
+    public async Task<AccountServiceResult> UserExistsAsync(EmailRequest request)
     {
         var exists = await _userManager.Users.AnyAsync(x => x.Email == request.Email);
         
         return exists 
-            ? new AccountServiceResult<bool>{ Success = true, Error = "User already exists.", Data = exists } 
-            : new AccountServiceResult<bool> { Success = true, Data = exists };
+            ? new AccountServiceResult{ Success = true, Message = "User already exists." } 
+            : new AccountServiceResult { Success = false };
     }
 }
