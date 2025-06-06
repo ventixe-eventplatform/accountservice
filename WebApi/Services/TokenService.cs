@@ -22,7 +22,7 @@ public class TokenService(IConfiguration config) : ITokenService
         var key = _config["JwtConfig:Key"];
 
         var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
-        var tokenValidityMin = _config.GetValue<int>("JwtConfig:TokenValidityMins");
+        var tokenValidityMin = _config.GetValue<int>("JwtConfig:TokenValidityMin");
         var tokenExpiryTimeStamp = DateTime.UtcNow.AddMinutes(tokenValidityMin);
 
         var claims = new List<Claim>
