@@ -57,6 +57,6 @@ public class AccountsController(IAccountService accountService) : ControllerBase
             return BadRequest();
 
         var result = await _accountService.UserExistsAsync(request);
-        return Ok(result.Success);
+        return Ok(result);
     }
 }
