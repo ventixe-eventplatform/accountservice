@@ -49,7 +49,6 @@ public class AccountsController(IAccountService accountService) : ControllerBase
         return Ok(new { messsage = "Signed out successfully." });
     }
 
-
     [AllowAnonymous]
     [HttpPost("exists")]
     public async Task<IActionResult> UserExistsAsync([FromBody] EmailRequest request)
